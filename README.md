@@ -1,7 +1,7 @@
 # todos
 Structured tasks.
 
-The goal of this code is to make it easy to export from and import to a database, and for that structured database data to support views that make it easier to decide which tasks to perform next.
+The goal of this code is to make it easy to export from and import to a database, and for that structured database data to support views (not necessarily "database SQL query views", but just a generic view into the tasks) that make it easier to decide which tasks to perform next.
 
     cp todos_config.py.example todos_config.py
     # update todos_config.py with your db credentials
