@@ -5,6 +5,7 @@ Version 0.1
 2018-10-05
 """
 import argparse
+import datetime
 from contextlib import contextmanager
 import csv
 
@@ -20,6 +21,7 @@ def create_tables():
     engine.execute(DDL('''CREATE TABLE {schema}.todos (
         tid serial primary key,
         title text not null,
+        completed_at timestamp without time zone default null,
         notes text,
         created_at timestamp without time zone not null default now(),
         modified_at timestamp without time zone not null default now(),
@@ -36,7 +38,7 @@ def create_tables():
 
 
 @contextmanager
-def get_cursor(connection_string):
+def get_connection(connection_string):
     conn = psycopg2.connect(connection_string)
     cursor = conn.cursor()
 
@@ -50,7 +52,7 @@ def export_tables(filename):
     with open(filename, 'w') as fw:
         csvw = csv.writer(fw)
 
-        with get_cursor(connection_string) as (_, cursor):
+        with get_connection(connection_string) as (_, cursor):
             cursor.execute("SELECT * FROM {schema}.todos".format(schema=schema_name))
             headers = [c.name for c in cursor.description]
             csvw.writerow(headers)
@@ -84,12 +86,12 @@ def import_tables(filename):
             schema=schema_name,
         )
 
-        with get_cursor(connection_string) as (conn, cursor):
+        with get_connection(connection_string) as (conn, cursor):
+            run_time = datetime.datetime.now()
             for i, row in enumerate(csvr):
                 if i % 1000 == 0:
                     conn.commit()
                 new_row = dict(zip(headers, row))
-                print(new_row)
                 # convert empty string to None
                 keys_to_delete = list()
                 for k, v in new_row.items():
@@ -106,6 +108,7 @@ def import_tables(filename):
                     new_row[k] = v
                 for k in keys_to_delete:
                     new_row.pop(k)
+                new_row['modified_at'] = run_time
 
                 # make sure new entries have a new record in the DB
                 # before trying to update it
@@ -127,11 +130,62 @@ def import_tables(filename):
                 )
             conn.commit()
 
+view_queries = [
+    ("due soon", """
+    """),
+]
+view_queries = [
+    ("due soon", """SELECT
+            due_time,title
+        from {schema}.todos
+        where due_time is not null
+        order by due_time asc
+        limit 5"""),
+    ("people waiting", """SELECT
+            person_waiting,title,due_time
+        from {schema}.todos
+        where person_waiting is not null
+        order by due_time desc"""),
+    ("short time commitment", """SELECT
+            time_required, title
+        from {schema}.todos
+        where time_required is not null
+        order by time_required asc
+        limit 5"""),
+    ("long time commitment", """SELECT
+            time_required, title
+        from {schema}.todos
+        where time_required is not null
+        order by time_required desc
+        limit 5"""),
+    ("life-important", """SELECT
+            life_importance, title
+        from {schema}.todos
+        where life_importance is not null
+        order by life_importance desc
+        limit 5"""),
+    ("career-important", """SELECT
+            career_importance, title
+        from {schema}.todos
+        where career_importance is not null
+        order by career_importance desc
+        limit 5"""),
+]
+
+def view():
+    import pandas as pd
+    with get_connection(connection_string) as (conn, cursor):
+        for qname, view_query in view_queries:
+            print('###################################### {} ######################################'.format(qname))
+            df = pd.read_sql(view_query.format(schema=schema_name), con=conn).fillna('')
+            print(df.set_index(df.columns[0]))
 
 def run_main():
     args = parse_cl_args()
 
-    if args.create_tables:
+    if args.view:
+        view()
+    elif args.create_tables:
         create_tables()
     elif args.export_filename:
         export_tables(args.export_filename)
@@ -147,6 +201,7 @@ def parse_cl_args():
         formatter_class=argparse.RawTextHelpFormatter,
     )
 
+    argParser.add_argument('--view', default=False, action='store_true')
     argParser.add_argument('--create-tables', default=False, action='store_true')
     argParser.add_argument(
         '--export', default=None, dest='export_filename',
