@@ -4,15 +4,18 @@
 Version 0.1
 2018-10-05
 """
+import sys
+import os
 import argparse
 import datetime
-from contextlib import contextmanager
 import csv
 
 from sqlalchemy import DDL
 import psycopg2
 
-from todos_config import engine, schema_name, connection_string
+sys.path.append(os.path.abspath('..'))
+from todos.todos_config import engine, schema_name, connection_string
+from todos.utils import get_connection
 
 def create_tables():
     engine.execute(DDL('CREATE SCHEMA IF NOT EXISTS {schema}'.format(
@@ -25,7 +28,7 @@ def create_tables():
         notes text,
         created_at timestamp without time zone not null default now(),
         modified_at timestamp without time zone not null default now(),
-        time_required int CHECK (time_required between 1 and 10),
+        time_commitment int CHECK (time_commitment between 1 and 10),
         due_time timestamp without time zone,
         category text,
         person_waiting text,
@@ -37,15 +40,19 @@ def create_tables():
     )))
 
 
-@contextmanager
-def get_connection(connection_string):
-    conn = psycopg2.connect(connection_string)
-    cursor = conn.cursor()
+column_order_preference = 'title due_time'.split()
 
-    yield conn, cursor
-
-    cursor.close()
-    conn.close()
+def get_export_column_names(cursor):
+    cursor.execute('''SELECT * from {schema}.todos limit 0'''.format(schema=schema_name))
+    headers = [c.name for c in cursor.description]
+    headers.remove('created_at')
+    headers.remove('modified_at')
+    for col in column_order_preference:
+        if col not in headers:
+            continue
+        headers.remove(col)
+        headers.insert(0, col)
+    return headers
 
 
 def export_tables(filename):
@@ -53,14 +60,30 @@ def export_tables(filename):
         csvw = csv.writer(fw)
 
         with get_connection(connection_string) as (_, cursor):
-            cursor.execute("SELECT * FROM {schema}.todos".format(schema=schema_name))
-            headers = [c.name for c in cursor.description]
+            headers = get_export_column_names(cursor)
             csvw.writerow(headers)
+
+            cursor.execute("""SELECT
+                    {columns}
+                FROM {schema}.todos
+                ORDER BY
+                    due_time ASC NULLS LAST
+                    , coalesce(life_importance,0) + coalesce(career_importance,0) DESC
+                """.format(
+                schema=schema_name,
+                columns=','.join(headers),
+            ))
+
+            # format every value in form of ="value" so excel
+            # won't try any funny business with values,
+            # especially dates
             for tup in cursor:
                 writerow = list()
                 for v in tup:
                     if isinstance(v, str):
                         v = v.replace('"', '\\"')
+                    elif v is None:
+                        v = ''
                     writerow.append('="{}"'.format(v))
                 csvw.writerow(writerow)
 
@@ -70,6 +93,7 @@ insert_new_todo_sql = "INSERT INTO {schema}.todos (title) values ('') RETURNING 
 non_null_columns = [
     'created_at',
     'modified_at',
+    'title',
 ]
 
 def import_tables(filename):
@@ -131,10 +155,6 @@ def import_tables(filename):
             conn.commit()
 
 view_queries = [
-    ("due soon", """
-    """),
-]
-view_queries = [
     ("due soon", """SELECT
             due_time,title
         from {schema}.todos
@@ -147,16 +167,16 @@ view_queries = [
         where person_waiting is not null
         order by due_time desc"""),
     ("short time commitment", """SELECT
-            time_required, title
+            time_commitment, title
         from {schema}.todos
-        where time_required is not null
-        order by time_required asc
+        where time_commitment is not null
+        order by time_commitment asc
         limit 5"""),
     ("long time commitment", """SELECT
-            time_required, title
+            time_commitment, title
         from {schema}.todos
-        where time_required is not null
-        order by time_required desc
+        where time_commitment >= 5
+        order by time_commitment desc
         limit 5"""),
     ("life-important", """SELECT
             life_importance, title
@@ -165,10 +185,10 @@ view_queries = [
         order by life_importance desc
         limit 5"""),
     ("career-important", """SELECT
-            career_importance, title
+            career_importance, title, due_time
         from {schema}.todos
         where career_importance is not null
-        order by career_importance desc
+        order by career_importance desc, due_time desc
         limit 5"""),
 ]
 

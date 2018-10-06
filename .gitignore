@@ -104,3 +104,4 @@ venv.bak/
 .mypy_cache/
 todos.csv
 todos_config.py
+commit_todos.txt
