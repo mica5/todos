@@ -12,7 +12,7 @@ The goal of this code is to make it easy to export from and import to a database
 
 Brand-new todos can be added as new lines in todos.csv and imported. They will be inserted into the database with their own new ids. For rows that already existed, their values in the database will found and updated based on their `tid`.
 
-Finally, sample output:
+**See [Visualize Todos Jupyter Notebook](./visualize_todos.ipynb) for a demo**, or here is some sample text-based output:
 
     ./commands.py --view
     ################### due soon ###################
