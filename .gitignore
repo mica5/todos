@@ -105,3 +105,4 @@ venv.bak/
 todos.csv
 todos_config.py
 commit_todos.txt
+view.txt
