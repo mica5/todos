@@ -13,7 +13,8 @@ import csv
 from sqlalchemy import DDL
 import psycopg2
 
-sys.path.append(os.path.abspath('..'))
+this_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.dirname(this_dir))
 from todos.todos_config import engine, schema_name, connection_string
 from todos.utils import get_connection
 
