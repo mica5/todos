@@ -3,7 +3,11 @@ this_dir="$(dirname "$(readlink -e "$0")")"
 
 view_txt="$this_dir"/view.txt
 
-./commands.py --view > "$view_txt"
+{
+    echo "$this_dir"/import.bash
+    echo "$this_dir"/view.bash
+    ./commands.py --view
+} > "$view_txt"
 
 view_cmd=mate
 which $view_cmd >/dev/null || view_cmd=less
