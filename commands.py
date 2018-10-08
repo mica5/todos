@@ -67,6 +67,7 @@ def export_tables(filename):
             cursor.execute("""SELECT
                     {columns}
                 FROM {schema}.todos
+                WHERE completed_at IS NULL
                 ORDER BY
                     due_time ASC NULLS LAST
                     , coalesce(life_importance,0) + coalesce(career_importance,0) DESC
@@ -160,35 +161,41 @@ view_queries = [
             due_time,title
         from {schema}.todos
         where due_time is not null
+            AND completed_at IS NULL
         order by due_time asc
         limit 5"""),
     ("people waiting", """SELECT
             person_waiting,title,due_time
         from {schema}.todos
         where person_waiting is not null
+            AND completed_at IS NULL
         order by due_time desc"""),
     ("short time commitment", """SELECT
             time_commitment, title
         from {schema}.todos
         where time_commitment is not null
+            AND completed_at IS NULL
         order by time_commitment asc
         limit 5"""),
     ("long time commitment", """SELECT
             time_commitment, title
         from {schema}.todos
         where time_commitment >= 5
+            AND completed_at IS NULL
         order by time_commitment desc
         limit 5"""),
     ("life-important", """SELECT
             life_importance, title
         from {schema}.todos
         where life_importance is not null
+            AND completed_at IS NULL
         order by life_importance desc
         limit 5"""),
     ("career-important", """SELECT
             career_importance, title, due_time
         from {schema}.todos
         where career_importance is not null
+            AND completed_at IS NULL
         order by career_importance desc, due_time desc
         limit 5"""),
 ]
