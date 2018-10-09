@@ -34,7 +34,8 @@ def create_tables():
         category text,
         person_waiting text,
         life_importance int CHECK (life_importance between 1 and 10),
-        career_importance int CHECK (career_importance between 1 and 10)
+        career_importance int CHECK (career_importance between 1 and 10),
+        deleted_at timestamp without time zone default null
     )
     '''.format(
         schema=schema_name,
@@ -67,7 +68,7 @@ def export_tables(filename):
             cursor.execute("""SELECT
                     {columns}
                 FROM {schema}.todos
-                WHERE completed_at IS NULL
+                WHERE completed_at IS NULL AND deleted_at IS NULL
                 ORDER BY
                     due_time ASC NULLS LAST
                     , coalesce(life_importance,0) + coalesce(career_importance,0) DESC
@@ -98,6 +99,15 @@ non_null_columns = [
     'title',
 ]
 
+def delete_todo(tid, run_time, cursor):
+    cursor.execute(
+        "UPDATE {schema}.todos SET deleted_at=%(run_time)s WHERE tid=%(tid)s".format(schema=schema_name),
+        vars={
+            'tid': tid,
+            'run_time': run_time,
+        },
+    )
+
 def import_tables(filename):
     with open(filename, 'r') as fr:
         csvr = csv.reader(fr)
@@ -112,12 +122,18 @@ def import_tables(filename):
             schema=schema_name,
         )
 
+        run_time = datetime.datetime.now()
         with get_connection(connection_string) as (conn, cursor):
-            run_time = datetime.datetime.now()
             for i, row in enumerate(csvr):
                 if i % 1000 == 0:
                     conn.commit()
                 new_row = dict(zip(headers, row))
+
+                # delete a task
+                if new_row['title'].lower() == 'delete':
+                    delete_todo(new_row['tid'], run_time, cursor)
+                    continue
+
                 # convert empty string to None
                 keys_to_delete = list()
                 for k, v in new_row.items():
@@ -161,41 +177,41 @@ view_queries = [
             due_time,title
         from {schema}.todos
         where due_time is not null
-            AND completed_at IS NULL
+            AND completed_at IS NULL AND deleted_at IS NULL
         order by due_time asc
         limit 5"""),
     ("people waiting", """SELECT
             person_waiting,title,due_time
         from {schema}.todos
         where person_waiting is not null
-            AND completed_at IS NULL
+            AND completed_at IS NULL AND deleted_at IS NULL
         order by due_time desc"""),
     ("short time commitment", """SELECT
             time_commitment, title
         from {schema}.todos
         where time_commitment is not null
-            AND completed_at IS NULL
+            AND completed_at IS NULL AND deleted_at IS NULL
         order by time_commitment asc
         limit 5"""),
     ("long time commitment", """SELECT
             time_commitment, title
         from {schema}.todos
         where time_commitment >= 5
-            AND completed_at IS NULL
+            AND completed_at IS NULL AND deleted_at IS NULL
         order by time_commitment desc
         limit 5"""),
     ("life-important", """SELECT
             life_importance, title
         from {schema}.todos
         where life_importance is not null
-            AND completed_at IS NULL
+            AND completed_at IS NULL AND deleted_at IS NULL
         order by life_importance desc
         limit 5"""),
     ("career-important", """SELECT
             career_importance, title, due_time
         from {schema}.todos
         where career_importance is not null
-            AND completed_at IS NULL
+            AND completed_at IS NULL AND deleted_at IS NULL
         order by career_importance desc, due_time desc
         limit 5"""),
 ]

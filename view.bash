@@ -6,7 +6,7 @@ view_txt="$this_dir"/view.txt
 {
     echo "$this_dir"/import.bash
     echo "$this_dir"/view.bash
-    ./commands.py --view
+    "$this_dir"/commands.py --view
 } > "$view_txt"
 
 view_cmd=mate
