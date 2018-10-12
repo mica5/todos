@@ -174,7 +174,7 @@ def import_tables(filename):
 
 view_queries = [
     ("due soon", """SELECT
-            due_time,title
+            due_time-now() as time_until_due,title
         from {schema}.todos
         where due_time is not null
             AND completed_at IS NULL AND deleted_at IS NULL
