@@ -42,7 +42,7 @@ def create_tables():
     )))
 
 
-column_order_preference = 'completed_at due_time title'.split()[::-1]
+column_order_preference = 'completed_at due_time title'.split()
 ignore_columns = 'created_at modified_at'.split()
 
 def get_export_column_names(cursor):
