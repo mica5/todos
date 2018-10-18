@@ -42,7 +42,7 @@ def create_tables():
     )))
 
 
-column_order_preference = 'title due_time'.split()
+column_order_preference = 'completed_at due_time title'.split()[::-1]
 ignore_columns = 'created_at modified_at'.split()
 
 def get_export_column_names(cursor):
@@ -55,7 +55,7 @@ def get_export_column_names(cursor):
         headers.remove(col)
 
     # sort by column order preference
-    for col in column_order_preference:
+    for col in column_order_preference[::-1]:
         if col not in headers:
             continue
         headers.remove(col)
