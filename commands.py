@@ -219,6 +219,7 @@ view_queries = [
 
 def view():
     import pandas as pd
+    pd.options.display.expand_frame_repr = False
     with get_connection(connection_string) as (conn, cursor):
         for qname, view_query in view_queries:
             print('###################################### {} ######################################'.format(qname))
