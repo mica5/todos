@@ -167,13 +167,13 @@ def import_tables(filename):
 
 additional_filters = "AND completed_at IS NULL AND deleted_at IS NULL"
 view_queries = [
-    ("due soon", """SELECT
+    ("due within 7 days", """SELECT
             due_time-now() as time_until_due,title
         from {schema}.todos
         where due_time is not null
+            AND (due_time::date-current_date) <= 7
             {additional_filters}
-        order by due_time asc
-        limit 5"""),
+        order by due_time asc"""),
     ("people waiting", """SELECT
             person_waiting,title,due_time
         from {schema}.todos
