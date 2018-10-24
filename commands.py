@@ -167,6 +167,13 @@ def import_tables(filename):
 
 additional_filters = "AND completed_at IS NULL AND deleted_at IS NULL"
 view_queries = [
+    ("urgent", """SELECT
+            urgency, title
+        from {schema}.todos
+        where urgency is not null
+            {additional_filters}
+        order by urgency DESC
+        limit 5"""),
     ("due within 7 days", """SELECT
             due_time-now() as time_until_due,title
         from {schema}.todos
@@ -180,13 +187,6 @@ view_queries = [
         where person_waiting is not null
             {additional_filters}
         order by due_time desc"""),
-    ("urgent", """SELECT
-            urgency, title
-        from {schema}.todos
-        where urgency is not null
-            {additional_filters}
-        order by urgency DESC
-        limit 5"""),
     ("short time commitment", """SELECT
             time_commitment, title
         from {schema}.todos
